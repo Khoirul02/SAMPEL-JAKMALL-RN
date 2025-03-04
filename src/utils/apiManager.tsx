@@ -4,7 +4,7 @@ const url: string = 'https://v2.jokeapi.dev/';
 const apiManager = axios.create({
   baseURL: url,
   headers: {
-    Accept: 'application/json',
+    'Accept': 'application/json',
     'Content-Type': 'application/json',
   },
 });
@@ -13,7 +13,7 @@ const apiManager = axios.create({
 apiManager.interceptors.response.use(
   async (response: AxiosResponse) => {
     console.log('response', response.data);
-    return response;
+    return response.data;
   },
   (error: any) => {
     console.log(error, 'error API');

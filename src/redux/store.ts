@@ -15,3 +15,4 @@ export const store = configureStore({
       serializableCheck: false,
     }).concat(thunk, logger),
 });
+export type AppDispatch = typeof store.dispatch;
