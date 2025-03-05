@@ -1,7 +1,10 @@
 import {createSlice, createAsyncThunk, PayloadAction} from '@reduxjs/toolkit';
 import ListServices from '../../services/list';
 import { ListCategoryInterface } from '../../services/interface/listCategoryInterface';
-import { ListDetailCategoryInterface } from '../../services/interface/listDetailCategoryInterface';
+import {
+  Joke,
+  ListDetailCategoryInterface,
+} from '../../services/interface/listDetailCategoryInterface';
 
 export const getListCategory = createAsyncThunk<
   { data: ListCategoryInterface },
@@ -21,24 +24,22 @@ export const getListCategory = createAsyncThunk<
 );
 
 export const getListDetailCategory = createAsyncThunk<
-  { data: ListDetailCategoryInterface },
-  { category: string; count: number },
-  { rejectValue: string }
->(
-  'list/getListDetailCategory',
-  async (params, thunkAPI) => {
-    try {
-      const response = await ListServices.getListDetailCategory(
-        params.category,
-        params.count,
-      );
-      return { data: response };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'An unknown error occurred';
-      return thunkAPI.rejectWithValue(message);
-    }
+  {data: ListDetailCategoryInterface},
+  {category: string; count: number; index: number},
+  {rejectValue: string}
+>('list/getListDetailCategory', async (params, thunkAPI) => {
+  try {
+    const response = await ListServices.getListDetailCategory(
+      params.category,
+      params.count,
+    );
+    return {data: response};
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'An unknown error occurred';
+    return thunkAPI.rejectWithValue(message);
   }
-);
+});
 
 const initialState: {
   isLoading: boolean;
@@ -68,27 +69,32 @@ export const listSlice = createSlice({
   name: 'list',
   initialState,
   reducers: {
-    setModal: (state, action) => {
-      state.modal = action.payload;
-    },
-    setLoadingDetail: (state, action) => {
-      state.isLoadingDetail = action.payload;
-    },
     setOpenList: (state, action: PayloadAction<string>) => {
       state.openList = action.payload;
-    },
-    setListCategory: (state, action: PayloadAction<string[]>) => {
-      state.listCategory = action.payload;
-    },
-    setListDetailCategory: (state, action: PayloadAction<any[]>) => {
-      state.listDetailCategory = action.payload;
     },
     setRefreshing: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload;
     },
+    moveToTop: (state, action: PayloadAction<number>) => {
+      const index = action.payload;
+      const newDataCategory = [...state.listCategory];
+      const selectedItemCategory = newDataCategory.splice(index, 1)[0];
+      newDataCategory.unshift(selectedItemCategory);
+      state.listCategory = newDataCategory;
+      if (state.listDetailCategory[index]) {
+        const newDataDetailCategory = [...state.listDetailCategory];
+        const selectedItemDetail = newDataDetailCategory.splice(index, 1)[0];
+        newDataDetailCategory.unshift(selectedItemDetail);
+        state.listDetailCategory = newDataDetailCategory;
+      }
+    },
   },
   extraReducers: builder => {
     builder
+      .addCase(getListCategory.pending, state => {
+        state.isLoading = true;
+        state.isError = false;
+      })
       .addCase(getListCategory.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isError = action.payload.data.error;
@@ -106,10 +112,19 @@ export const listSlice = createSlice({
         state.listCategory = [];
         state.message = 'Failed';
       })
+      .addCase(getListDetailCategory.pending, state => {
+        state.isLoadingDetail = true;
+        state.isError = false;
+      })
       .addCase(getListDetailCategory.fulfilled, (state, action) => {
         state.isLoadingDetail = false;
         state.isError = action.payload.data.error;
         state.message = action.payload.data.error ? 'Failed' : 'Succes';
+        const updatedList = [...state.listDetailCategory];
+        updatedList[action.meta.arg.index] = action.payload.data.jokes.map(
+          (item: Joke) => item.joke,
+        );
+        state.listDetailCategory = updatedList;
       })
       .addCase(getListDetailCategory.rejected, state => {
         state.isLoadingDetail = false;
@@ -120,13 +135,7 @@ export const listSlice = createSlice({
 });
 
 // Action creators are generated for each case reducer function
-export const {
-  setLoadingDetail,
-  setListCategory,
-  setOpenList,
-  setRefreshing,
-  setListDetailCategory,
-} = listSlice.actions;
+export const {setOpenList, setRefreshing, moveToTop} = listSlice.actions;
 
 const reducer = listSlice.reducer;
 export default reducer;

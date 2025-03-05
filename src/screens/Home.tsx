@@ -14,18 +14,15 @@ import {
 import {useDispatch, useSelector} from 'react-redux';
 import {
   getListCategory,
-  setListCategory,
+  moveToTop,
   setOpenList,
-  setListDetailCategory,
   setRefreshing,
   getListDetailCategory,
-  setLoadingDetail,
 } from '../redux/list/listSlice';
 import {AppDispatch} from './../redux/store';
 import {colorApp, stylesheets} from '../assets';
 import CustomHeader from '../components/header';
 import Gap from '../components/gap';
-import {Joke} from '../services/interface/listDetailCategoryInterface';
 const HomeScreen = ({}) => {
   const dispatch = useDispatch<AppDispatch>();
   const {
@@ -35,57 +32,43 @@ const HomeScreen = ({}) => {
     refreshing,
     listDetailCategory,
     isLoadingDetail,
+    isError,
   } = useSelector((state: any) => state.list);
   React.useEffect(() => {
     dispatch(getListCategory());
   }, [dispatch]);
-  const moveToTop = (index: number) => {
-    const newData = [...listCategory];
-    const selectedItem = newData.splice(index, 1)[0];
-    newData.unshift(selectedItem);
-    dispatch(setOpenList(''));
-    dispatch(setListCategory(newData));
-    if (listDetailCategory[index].length > 0) {
-      const newDataDetail = [...listDetailCategory];
-      const selectedItemDetail = newDataDetail.splice(index, 1)[0];
-      newDataDetail.unshift(selectedItemDetail);
-      dispatch(setListDetailCategory(newDataDetail));
-    }
+  const moveToTopAction = (index: number) => {
+    dispatch(moveToTop(index));
   };
   const openListItem = (item: string, index: number) => {
     if (openList !== item) {
-      listDetailCategory[index].length == 0 && fetchDataDetail(index, item);
+      listDetailCategory[index].length == 0 && fetchDataDetail(index);
       dispatch(setOpenList(item));
     } else {
       dispatch(setOpenList(''));
     }
   };
-  const fetchDataDetail = async (index: number, category: string) => {
-    const response = await dispatch(
+  const fetchDataDetail = async (index: number) => {
+    dispatch(
       getListDetailCategory({
-        category: category,
+        category: listCategory[index],
         count: 2,
+        index: index,
       }),
-    ).unwrap();
-    const updatedList = [...listDetailCategory];
-    updatedList[index] = response.data.jokes.map((item: Joke) => item.joke);
-    dispatch(setListDetailCategory(updatedList));
+    );
   };
   const fetchDataDetailLoadMore = async (
     index: number,
     count: number,
     category: string,
   ) => {
-    dispatch(setLoadingDetail(true));
-    const response = await dispatch(
+    dispatch(
       getListDetailCategory({
         category: category,
         count: count + 2,
+        index: index,
       }),
-    ).unwrap();
-    const updatedList = [...listDetailCategory];
-    updatedList[index] = response.data.jokes.map((item: Joke) => item.joke);
-    dispatch(setListDetailCategory(updatedList));
+    );
   };
   const AlretPopUp = (desc: string) =>
     Alert.alert('Detail List', desc, [
@@ -109,7 +92,7 @@ const HomeScreen = ({}) => {
           {item}
         </Text>
         {index !== 0 ? (
-          <TouchableOpacity onPress={() => moveToTop(index)}>
+          <TouchableOpacity onPress={() => moveToTopAction(index)}>
             <Text>⬆️</Text>
           </TouchableOpacity>
         ) : (
@@ -147,10 +130,14 @@ const HomeScreen = ({}) => {
                 stylesheets.contentCenterNoBackground,
                 {paddingVertical: 10},
               ]}>
-              <ActivityIndicator
-                size={'small'}
-                color={colorApp.primary as string}
-              />
+              {isError ? (
+                <Text>Data Gagal Dimuat!</Text>
+              ) : (
+                <ActivityIndicator
+                  size={'small'}
+                  color={colorApp.primary as string}
+                />
+              )}
             </View>
           )}
           {listDetailCategory[index].length !== 6 &&
